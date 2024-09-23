@@ -1,2 +1,1 @@
-# AlgoxHealthcare
-Healthcare App
+# AlgoX Healthcare App
