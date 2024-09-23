@@ -5,7 +5,8 @@ const multer = require("multer");
 const mongoose = require("mongoose");
 const app = express();
 const port = 200;
-const url = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@daphnis-cluster.pkoatzk.mongodb.net/psymate-development?retryWrites=true`;
+
+const url = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@cluster0.53okh.mongodb.net/AlgoxHealthcare?retryWrites=true&appName=Cluster0`;
 const dbName = process.env.DB_NAME;
 
 mongoose.connect(
