@@ -4,7 +4,7 @@ const cors = require("cors");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const app = express();
-const port = 200;
+const port = process.env.PORT;
 
 const url = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@cluster0.53okh.mongodb.net/AlgoxHealthcare?retryWrites=true&appName=Cluster0`;
 const dbName = process.env.DB_NAME;
