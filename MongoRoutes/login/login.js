@@ -5,16 +5,16 @@ const otpGenerator = require("otp-generator");
 const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
 const config = process.env;
-const jwt = require("jsonwebtoken");
 const { SiteSettings } = require("../../schemas/SiteSettings");
 const qr = require("qrcode");
 const fs = require("fs"); // Import the built-in 'fs' library to read the PDF file
 const { s3Uploadv2 } = require("../../routes/service/s3Service");
 const { sendPatientEmail } = require("../../routes/payment/utils/Helper");
 const { generateOTPTemplate } = require("../../templates/otpTemplate");
-const testingNumbers = [
-  "1111111111"
-];
+const testingNumbers = ["1111111111"];
+const { accessToken } = require("../../middleware/auth.js");
+const TokenAuthModel = require("../../schemas/v2/TokenAuth.schema.js");
+
 
 router.get("/", (req, res) => {
   const phone = req.query.credential;
@@ -35,7 +35,6 @@ router.get("/", (req, res) => {
         if (testingNumbers.indexOf(phone) !== -1) {
           otp = "000000";
         }
-        console.log(result);
         if (result === null) {
           axios
             .get(url)
@@ -70,30 +69,39 @@ router.get("/", (req, res) => {
             });
           } else {
             axios
-            .get(url)
-            .then((success) => {
-              console.log(success);
-              const token = jwt.sign(
-                { userId: result._doc.uid },
-                config.JWT_SECRET,
-                {
-                  expiresIn: "12h",
-                }
-              );
-              res.status(200).json({
-                status: 200,
-                login: true,
-                message: otp,
-                userData: { ...result._doc, jwt: token },
+              .get(url)
+              .then(async (success) => {
+                // Step 1 : User Token (Exist or Not) in Token Auth Table
+                const isUser = await TokenAuthModel.findOne({ userId: result._id });
+                if (isUser) {
+                  res.status(200).json({ status: 200, login: true, message: otp, userData: { ...result._doc, jwt: isUser.userAuthToken }});
+                } else {
+                  // Step 1 : Generate Token for 1 year
+                  const token = await accessToken(result);
+                  // Step 2 : Create Payload
+                  const TokenAuthPayload = {
+                    userId: result._id,
+                    userName: result.displayName,
+                    userType: result.type,
+                    userAuthToken: token,
+                  };
+                  // Step 3 : Create Record if -- NOT EXIST --
+                  TokenAuthModel.create(TokenAuthPayload)
+                      .then((currentResp) => {
+                        return res.status(200).json({ status: 200, message: "Token Created", data: { ...result._doc, jwt: token }});
+                      })
+                      .catch((error) => {
+                        return res.status(200).json({ status: 401, response: error.stack, message: error.message });
+                      });
+                  }
+                })
+              .catch((err) => {
+                console.log(err);
+                res.status(500).json({
+                  status: 500,
+                  message: "Server error in processing your request",
+                });
               });
-            })
-            .catch((err) => {
-              console.log(err);
-              res.status(500).json({
-                status: 500,
-                message: "Server error in processing your request",
-              });
-            });
           }
         }
       })
@@ -111,13 +119,9 @@ router.post("/register", async (req, res) => {
   const userData = req.body.data;
   const type = req.query.type;
   const uid = uuidv4();
-  const token = jwt.sign({ userId: uid }, config.JWT_SECRET, {
-    expiresIn: "12h",
-  });
 
   try {
     // Check if email or phone number already exists
-
     if (userData.phone) {
       // Check if the provided Phone is unique
       const existingUserWithPhone = await User.findOne({
@@ -249,13 +253,40 @@ router.post("/register", async (req, res) => {
     }
 
     await existingSettings.save();
-    await newUser.save();
 
-    res.status(200).json({
-      status: 200,
-      message: "Successfully created user",
-      data: { ...newUser, jwt: token },
+    // ------------------------------------------------ //
+    await newUser.save().then(async (user) => {
+      // Step 1 : Generate Token for 1 year
+      const token = await accessToken(user);
+      // Step 2 : Create Payload
+      const TokenAuthPayload = {
+        userId: user._id,
+        userName: user.displayName,
+        userType: user.type,
+        userAuthToken: token,
+      };
+      // Step 3 : Check Already Exist
+      const isExist = await TokenAuthModel.findById(user._id);
+      // Step 4 : Create Record if -- NOT EXIST --
+      if (!isExist) {
+        TokenAuthModel.create(TokenAuthPayload)
+          .then((result) => {
+            return res.status(200).json({
+              status: 200,
+              message: "Successfully created user",
+              data: { ...newUser, token: token },
+            });
+          })
+          .catch((error) => {
+            return res.status(200).json({
+              status: 401,
+              response: error.stack,
+              message: error.message,
+            });
+          });
+      }
     });
+    // ------------------------------------------------- //
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -311,7 +342,6 @@ router.get("/send-otp/:credential", async (req, res) => {
       specialChars: false,
     });
 
- 
     if (existingUserWithcredential.email) {
       const invoiceEmailTemplate = generateOTPTemplate(otp);
       sendPatientEmail(

@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { Videos } = require("../../schemas/v2/Videos");
+const { Videos } = require("../../schemas/v2//Videos");
 const { ObjectId } = require("mongodb");
 
 router.post("/", async (req, res) => {

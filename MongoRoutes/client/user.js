@@ -6,6 +6,8 @@ const { v4: uuidv4 } = require("uuid");
 const jwt = require("jsonwebtoken");
 const { SiteSettings } = require("../../schemas/SiteSettings");
 const { createQuery } = require("../../routes/payment/utils/Helper");
+const { accessToken } = require("../../middleware/auth.js");
+const TokenAuthModel = require("../../schemas/v2/TokenAuth.schema.js");
 const config = process.env;
 
 router.post("/getUser", (req, res, next) => {
@@ -177,8 +179,7 @@ router.put("/user/:id", async (req, res) => {
   }
 });
 
-//Proper filter api 
-
+//Proper filter api
 router.get("/getAllUsers", async (req, res) => {
   try {
     const userType = req.query.type;
@@ -192,43 +193,48 @@ router.get("/getAllUsers", async (req, res) => {
       availability: req.query.availability,
     };
 
-    let queryWithFilters = { type: userType };
+    let queryWithFilters = { type : userType };
 
     for (const filterKey in filters) {
       const filterValue = filters[filterKey];
       if (filterValue) {
-                switch (filterKey) {
-                  case "specialization":
-                    const specializations =
-                      typeof filterValue === "string" ? filterValue.split(",") : [filterValue];
-                    queryWithFilters.specialization = { $in: specializations };
-                    break;
-                  case "yearsOfExperience":
-                    const expRange = filterValue.includes("-") ? filterValue.split("-") : [filterValue];
-                    const [minExp, maxExp] = expRange.map(Number);
-                    queryWithFilters.yearsOfExperience = {
-                      $gte: minExp,
-                      $lte: maxExp,
-                    };
-                    break;
-                  case "defaultPrice":
-                    const num = parseInt(filterValue);
-                    queryWithFilters.defaultPrice = { $lte: num };
-                    break;
-                    case "languages":
-                    const languages =
-                      typeof filterValue === "string" ? filterValue.split(",") : [filterValue];
-                    queryWithFilters.languages = { $in: languages };
-                    break;
-                  case "availability":
-                    queryWithFilters.availability = parseInt(filterValue);
-                    break;
-                  default:
-                    break;
-                }
-              }
-            }
-        console.log(queryWithFilters)
+        switch (filterKey) {
+          case "specialization":
+            const specializations =
+              typeof filterValue === "string"
+                ? filterValue.split(",")
+                : [filterValue];
+            queryWithFilters.specialization = { $in: specializations };
+            break;
+          case "yearsOfExperience":
+            const expRange = filterValue.includes("-")
+              ? filterValue.split("-")
+              : [filterValue];
+            const [minExp, maxExp] = expRange.map(Number);
+            queryWithFilters.yearsOfExperience = {
+              $gte: minExp,
+              $lte: maxExp,
+            };
+            break;
+          case "defaultPrice":
+            const num = parseInt(filterValue);
+            queryWithFilters.defaultPrice = { $lte: num };
+            break;
+          case "languages":
+            const languages =
+              typeof filterValue === "string"
+                ? filterValue.split(",")
+                : [filterValue];
+            queryWithFilters.languages = { $in: languages };
+            break;
+          case "availability":
+            queryWithFilters.availability = parseInt(filterValue);
+            break;
+          default:
+            break;
+        }
+      }
+    }
 
     let users;
 
@@ -239,12 +245,18 @@ router.get("/getAllUsers", async (req, res) => {
     }
 
     if (!userType) {
-      return res.status(400).json({ status: 400, message: "Invalid User Credentials" });
+      return res
+        .status(400)
+        .json({ status: 400, message: "Invalid User Credentials" });
     }
 
     let updatedResponse;
 
-    if (userType === "doctor" && !doctorsId && !Object.values(filters).some(Boolean)) {
+    if (
+      userType === "doctor" &&
+      !doctorsId &&
+      !Object.values(filters).some(Boolean)
+    ) {
       const success = await User.find({ type: userType });
       updatedResponse = success.map((item) => ({
         ...item._doc,
@@ -266,18 +278,16 @@ router.get("/getAllUsers", async (req, res) => {
       }));
     }
 
-   
     updatedResponse.sort((a, b) => {
-      if (req.query.sortOrder === 'asc') {
+      if (req.query.sortOrder === "asc") {
         return a.rank - b.rank;
-      } else if (req.query.sortOrder === 'desc') {
+      } else if (req.query.sortOrder === "desc") {
         return b.rank - a.rank;
       } else {
         return a.rank - b.rank;
       }
     });
 
-    
     if (userType === "doctor" && req.query.sortPrice) {
       updatedResponse.sort((c, d) => {
         if (req.query.sortPrice === "low") {
@@ -285,7 +295,7 @@ router.get("/getAllUsers", async (req, res) => {
         } else if (req.query.sortPrice === "high") {
           return d.defaultPrice - c.defaultPrice;
         }
-      
+
         return 0;
       });
     }
@@ -296,7 +306,6 @@ router.get("/getAllUsers", async (req, res) => {
       message: "Success",
       data: [...updatedResponse],
     });
-
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -349,13 +358,11 @@ router.get("/users", async (req, res) => {
   }
 });
 
-
 router.post("/user", async (req, res) => {
   const userType = req.query.type;
   const userData = req.body.data;
   const count = await User.countDocuments();
   const psyId = `2021${String(count + 1).padStart(6, "0")}`;
-
   if (!userType || !userData) {
     res.status(400).json({ status: 400, message: "Invalid User Credentials" });
   } else {
@@ -366,6 +373,7 @@ router.post("/user", async (req, res) => {
       type: userType,
       psyId: psyId,
     });
+    
     user
       .save()
       .then((result) => {
@@ -536,5 +544,101 @@ router.get("/userById/:id", async (req, res) => {
     });
   }
 });
+
+
+// ---------------- Token Creation for Users -------------- 
+router.post("/createUserToken", async (req,res) => {
+  let {userName, userType } = req.body;
+  let  userid = ObjectId(req.body.userId);
+
+  //check exist or not
+  const userTokenExist = await TokenAuthModel.findOne({userId : userid});
+  if( (userTokenExist) && (userTokenExist.userId.equals(userid))){
+    return res.status(200).json({status : 401, response : userTokenExist ,message : "User Token Already Exist"});
+  }else{
+    try{
+      if(userid && userName && userType){
+        const token = await accessToken(req.body);
+        req.body.userAuthToken = token;
+        const CreateResp = await TokenAuthModel.create(req.body);
+        if(CreateResp){
+          return res.status(200).json({status : 201, response : CreateResp, message : "User Token Successfully Created"});
+        }else{
+          return res.status(200).json({status : 401, response : CreateResp, message : "Toke Not Created" });
+        }
+      }
+    }catch(err){
+      res.status(400).json({status : 400, message : err.message});
+    }
+  }
+});
+
+router.get("/getAllToken", async (req,res) => {
+  try{
+    const getResp = await TokenAuthModel.find({});
+    if(getResp.length > 0){
+      return res.status(200).json({status : 201, response : getResp, message : "Token List including user's Id, Name, Type"});
+    }else{
+      return res.status(200).json({status : 401, response : getResp, message : "Empty Token List" });
+    }
+  }catch(err){
+    res.send(400).json({ status: 400, message: err.message });
+  }
+});
+
+router.put("/userTokenStatus", async (req, res) => {
+  const active = req.body.active;
+  const userid = ObjectId(req.query.userId);
+  try {
+    const UpdateResp = await TokenAuthModel.findOneAndUpdate({userId : userid}, {active : active}, {new: true});
+    if (UpdateResp) {
+      return res.status(200).json({status: 201, response: UpdateResp, message: "Token Status Successfully Updated"});
+    } else {
+      return res.status(200).json({ status: 401, response: UpdateResp, message: "Token Status Not Updated" });
+    }
+  } catch (err) {
+    res.send(400).json({ status: 400, message: err.message });
+  }
+});
+
+router.delete("/deleteOnlyToken", async(req,res) => {
+  const tokenid = ObjectId(req.query.tokenId);
+  try{
+    const DeleteResp = await TokenAuthModel.findByIdAndDelete({_id : tokenid});
+    if(DeleteResp){
+      return res.status(200).json({status : 201, response : DeleteResp, message : "Token Deleted Successfully"});
+    }else{
+      return res.status(200).json({status : 401, response : DeleteResp, message : "Not Deleted" });
+    }
+  }catch(err){
+    res.status(400).json({status : 400, response : err.message});
+  }
+});
+
+router.delete("/deleteUserToken", async(req,res) => { 
+  const tokenid = req.query.tokenId;
+  try{
+    const userTokenInfo = await TokenAuthModel.findById({ _id : ObjectId(tokenid) });
+    if(userTokenInfo.userId){
+      const userDeleteResp = await User.findByIdAndDelete({_id:ObjectId(userTokenInfo.userId)});
+      if(userDeleteResp){
+        const tokenDeleteResp = await TokenAuthModel.findByIdAndDelete({ _id : ObjectId(tokenid) });
+        return res.status(200).json({status : 201, response : [{user: userDeleteResp}, {token: tokenDeleteResp}], message : "Token Deleted Successfully along with its User"});
+      }else{
+        return res.status(200).json({status : 401, response : userDeleteResp, message : "User not found" });
+      }
+    }else{
+      return res.status(200).json({status : 401, response : getResp, message : "User Token Not Exist" });
+    }
+  }catch(err){
+    res.send(400).json({ status: 400, message: err.message });
+  }
+});
+/* 
+in this context, i will delete User when perform (Token's delete operation) 
+step 1 : Delete user, using userId(stored in document)
+step 2 : Delete token, using tokenId(_id)
+*/
+
 
 module.exports = router;
