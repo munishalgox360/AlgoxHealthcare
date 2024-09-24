@@ -1,11 +1,25 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const fs = require("fs");
+const https = require("https");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const app = express();
 const port = process.env.PORT;
 const { verifyToken } = require("./middleware/auth.js");
+
+
+// Load SSL certificates
+const privateKey = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/privkey.pem', 'utf8');
+const certificate = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/fullchain.pem', 'utf8');
+const ca = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/chain.pem', 'utf8'); 
+
+const credentials = {
+  key: privateKey,
+  cert: certificate,
+  ca: ca
+};
 
 const dbName = process.env.DB_NAME;
 const url = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@daphnis-cluster.pkoatzk.mongodb.net/psymate-development?retryWrites=true`;
@@ -172,5 +186,6 @@ app.use((error, req, res, next) => {
 });
 
 
-
-app.listen(port, () => console.log(`server started on port ${port}`));
+https.createServer(credentials, app).listen(port, () => {
+  console.log(`<h1>Express listening on port ${port}</h1>`);
+});
