@@ -22,8 +22,9 @@ const credentials = {
 };
 
 const dbName = process.env.DB_NAME;
-const url = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@daphnis-cluster.pkoatzk.mongodb.net/psymate-development?retryWrites=true`;
+// const url = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@daphnis-cluster.pkoatzk.mongodb.net/psymate-development?retryWrites=true`;
 // const url = "mongodb://127.0.0.1:27017/Psymate_Locale_Suraj";
+const url = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@cluster0.53okh.mongodb.net/AlgoxHealthcare`;
 
 mongoose.connect(
   url,
@@ -50,7 +51,8 @@ app.use(
 //   credentials: true,  
 //   optionsSuccessStatus: 204,
 // }
-// app.use(cors(corsOptions));
+
+app.use(cors());
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -186,6 +188,6 @@ app.use((error, req, res, next) => {
 });
 
 
-https.createServer(credentials, app).listen(port, () => {
+https.createServer(app, credentials).listen(port, () => {
   console.log(`<h1>Express listening on port ${port}</h1>`);
 });
