@@ -2,24 +2,24 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
-const https = require("https");
+const https = require("http");
 const multer = require("multer");
 const mongoose = require("mongoose");
 const app = express();
 const port = process.env.PORT;
-const { verifyToken } = require("./middleware/auth.js");
+const  {verifyToken} = require("./middleware/auth.js");
 
 
 // Load SSL certificates
-const privateKey = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/privkey.pem', 'utf8');
-const certificate = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/fullchain.pem', 'utf8');
-const ca = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/chain.pem', 'utf8'); 
+// const privateKey = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/privkey.pem', 'utf8');
+// const certificate = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/fullchain.pem', 'utf8');
+// const ca = fs.readFileSync('/etc/letsencrypt/live/kambojproperty.com/chain.pem', 'utf8'); 
 
-const credentials = {
-  key: privateKey,
-  cert: certificate,
-  ca: ca
-};
+// const credentials = {
+//   key: privateKey,
+//   cert: certificate,
+//   ca: ca
+// };
 
 const dbName = process.env.DB_NAME;
 // const url = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@daphnis-cluster.pkoatzk.mongodb.net/psymate-development?retryWrites=true`;
@@ -71,99 +71,99 @@ app.get("/", (req, res) => {
 });
 
 // route included
-app.use("/payment", verifyToken, require("./routes/payment"));
-app.use("/sendSMS", verifyToken, require("./routes/sendSMS"));
-app.use("/email", verifyToken, require("./routes/emailHandler"));
-app.use("/user", verifyToken, require("./MongoRoutes/client/user"));
-app.use("/user/likes", verifyToken, require("./MongoRoutes/siteSettings/Likes"));
-app.use("/user/addresses", verifyToken, require("./MongoRoutes/siteSettings/Address"));
+app.use("/payment", require("./routes/payment"));
+app.use("/sendSMS", require("./routes/sendSMS"));
+app.use("/email", require("./routes/emailHandler"));
+app.use("/user", require("./MongoRoutes/client/user"));
+app.use("/user/likes", require("./MongoRoutes/siteSettings/Likes"));
+app.use("/user/addresses", require("./MongoRoutes/siteSettings/Address"));
 app.use(
-  "/user/education", verifyToken,
+  "/user/education",
   require("./MongoRoutes/siteSettings/user/Education")
 );
-app.use("/shiprocket/order", verifyToken, require("./shiprocket/order"));
-app.use("/clinical_data", verifyToken, require("./MongoRoutes/clinc/clinical_data/index"));
-app.use("/coupon", verifyToken, require("./MongoRoutes/coupon/index"));
-app.use("/media", verifyToken, require("./MongoRoutes/client/media"));
+app.use("/shiprocket/order", require("./shiprocket/order"));
+app.use("/clinical_data", require("./MongoRoutes/clinc/clinical_data/index"));
+app.use("/coupon", require("./MongoRoutes/coupon/index"));
+app.use("/media", require("./MongoRoutes/client/media"));
 app.use("/login", require("./MongoRoutes/login/login"));
-app.use("/payment", verifyToken, require("./MongoRoutes/payment/payment"));
-app.use("/transactions", verifyToken, require("./MongoRoutes/transactions"));
-app.use("/assessments", verifyToken, require("./MongoRoutes/assessment"));
-app.use("/migration", verifyToken, require("./migration-scripts/user"));
-app.use("/disorder", verifyToken, require("./MongoRoutes/disorders.js"));
-app.use("/article", verifyToken, require("./MongoRoutes/article/article"));
-app.use("/feed", verifyToken, require("./MongoRoutes/feed/feed"));
-app.use("/forms", verifyToken, require("./MongoRoutes/form/formData"));
-app.use("/api/tools", verifyToken, require("./MongoRoutes/form/newForms"));
-app.use("/offers", verifyToken, require("./MongoRoutes/siteSettings/Offers"));
-app.use("/jobs", verifyToken, require("./MongoRoutes/siteSettings/jobs"));
-app.use("/videos", verifyToken, require("./MongoRoutes/siteSettings/Videos"));
-app.use("/courses", verifyToken, require("./MongoRoutes/siteSettings/Courses"));
+app.use("/payment", require("./MongoRoutes/payment/payment"));
+app.use("/transactions", require("./MongoRoutes/transactions"));
+app.use("/assessments", require("./MongoRoutes/assessment"));
+app.use("/migration", require("./migration-scripts/user"));
+app.use("/disorder", require("./MongoRoutes/disorders.js"));
+app.use("/article", require("./MongoRoutes/article/article"));
+app.use("/feed", require("./MongoRoutes/feed/feed"));
+app.use("/forms", require("./MongoRoutes/form/formData"));
+app.use("/api/tools", require("./MongoRoutes/form/newForms"));
+app.use("/offers", require("./MongoRoutes/siteSettings/Offers"));
+app.use("/jobs", require("./MongoRoutes/siteSettings/jobs"));
+app.use("/videos", require("./MongoRoutes/siteSettings/Videos"));
+app.use("/courses", require("./MongoRoutes/siteSettings/Courses"));
 app.use(
-  "/wellnessPrograms", verifyToken, 
+  "/wellnessPrograms", 
   require("./MongoRoutes/siteSettings/wellnessPrograms")
 );
-app.use("/verticles", verifyToken, require("./MongoRoutes/siteSettings/verticles"));
-app.use("/status", verifyToken, require("./MongoRoutes/siteSettings/status"));
-app.use("/disorderpage", verifyToken, require("./MongoRoutes/siteSettings/disorderpage"));
-app.use("/appointment", verifyToken, require("./MongoRoutes/siteSettings/Appointment"));
-app.use("/cart", verifyToken, require("./MongoRoutes/siteSettings/cart"));
-app.use("/permissions", verifyToken, require("./MongoRoutes/roles/permissions"));
-app.use("/invoice", verifyToken, require("./MongoRoutes/siteSettings/invoice"));
-app.use("/data", verifyToken, require("./MongoRoutes/siteSettings/Settings"));
-app.use("/orders", verifyToken, require("./MongoRoutes/siteSettings/orders"));
-app.use("/item", verifyToken, require("./MongoRoutes/ecommerce/Item"));
-app.use("/salt", verifyToken, require("./MongoRoutes/ecommerce/salt"));
-app.use("/prescriptions", verifyToken, require("./MongoRoutes/siteSettings/prescriptions"));
-app.use("/timeline", verifyToken, require("./MongoRoutes/siteSettings/timeline"));
+app.use("/verticles", require("./MongoRoutes/siteSettings/verticles"));
+app.use("/status", require("./MongoRoutes/siteSettings/status"));
+app.use("/disorderpage", require("./MongoRoutes/siteSettings/disorderpage"));
+app.use("/appointment", require("./MongoRoutes/siteSettings/Appointment"));
+app.use("/cart", require("./MongoRoutes/siteSettings/cart"));
+app.use("/permissions", require("./MongoRoutes/roles/permissions"));
+app.use("/invoice", require("./MongoRoutes/siteSettings/invoice"));
+app.use("/data", require("./MongoRoutes/siteSettings/Settings"));
+app.use("/orders", require("./MongoRoutes/siteSettings/orders"));
+app.use("/item", require("./MongoRoutes/ecommerce/Item"));
+app.use("/salt", require("./MongoRoutes/ecommerce/salt"));
+app.use("/prescriptions", require("./MongoRoutes/siteSettings/prescriptions"));
+app.use("/timeline", require("./MongoRoutes/siteSettings/timeline"));
 app.use(
-  "/ProvisionalCodes", verifyToken,
+  "/ProvisionalCodes",
   require("./MongoRoutes/siteSettings/ProvisionalCodes")
 );
-app.use("/call", verifyToken, require("./routes/call"));
-app.use("/getMetaTags", verifyToken, require("./MongoRoutes/metaTags"));
-app.use("/externalBlogs", verifyToken, require("./MongoRoutes/siteSettings/externalBlogs"));
+app.use("/call", require("./routes/call"));
+app.use("/getMetaTags", require("./MongoRoutes/metaTags"));
+app.use("/externalBlogs", require("./MongoRoutes/siteSettings/externalBlogs"));
 app.use(
-  "/specifier", verifyToken,
+  "/specifier",
   require("./MongoRoutes/history/symptom/common/specifiers")
 );
-app.use("/symptoms", verifyToken, require("./MongoRoutes/history/symptom/common/symptoms"));
+app.use("/symptoms", require("./MongoRoutes/history/symptom/common/symptoms"));
 app.use(
-  "/learnerStories", verifyToken,
+  "/learnerStories",
   require("./MongoRoutes/siteSettings/LearnerStories")
 );
-app.use("/establishment", verifyToken, require("./MongoRoutes/siteSettings/Establishments"));
+app.use("/establishment", require("./MongoRoutes/siteSettings/Establishments"));
 app.use(
-  "/appointmentTemplates", verifyToken,
+  "/appointmentTemplates",
   require("./MongoRoutes/siteSettings/AppointmentTemplates")
 );
 app.use(
-  "/academyCategories", verifyToken,
+  "/academyCategories",
   require("./MongoRoutes/siteSettings/AcademyCategories")
 );
-app.use("/testimonials", verifyToken, require("./MongoRoutes/siteSettings/Testimonials"));
-app.use("/establishment", verifyToken, require("./MongoRoutes/siteSettings/Establishments"));
-app.use("/faq", verifyToken, require("./MongoRoutes/siteSettings/FAQ"));
-app.use("/roles", verifyToken, require("./MongoRoutes/roles/roles"));
-app.use("/medicine", verifyToken, require("./MongoRoutes/pharmacy/medicine"));
-app.use("/templates", verifyToken, require("./MongoRoutes/siteSettings/templates"));
-app.use("/pharmacy", verifyToken, require("./MongoRoutes/pharmacy/category"));
-app.use("/zoho", verifyToken, require("./routes/zoho"));
-app.use("/file", verifyToken, require("./routes/file"));
-app.use("/sessions", verifyToken, require("./MongoRoutes/appointment/doctor/sessions"));
-app.use("/booking/appointment", verifyToken, require("./MongoRoutes/appointment/booking"));
+app.use("/testimonials", require("./MongoRoutes/siteSettings/Testimonials"));
+app.use("/establishment", require("./MongoRoutes/siteSettings/Establishments"));
+app.use("/faq", require("./MongoRoutes/siteSettings/FAQ"));
+app.use("/roles", require("./MongoRoutes/roles/roles"));
+app.use("/medicine", require("./MongoRoutes/pharmacy/medicine"));
+app.use("/templates", require("./MongoRoutes/siteSettings/templates"));
+app.use("/pharmacy", require("./MongoRoutes/pharmacy/category"));
+app.use("/zoho", require("./routes/zoho"));
+app.use("/file", require("./routes/file"));
+app.use("/sessions", require("./MongoRoutes/appointment/doctor/sessions"));
+app.use("/booking/appointment", require("./MongoRoutes/appointment/booking"));
 app.use(
-  "/booking/appointment/check", verifyToken,
+  "/booking/appointment/check",
   require("./MongoRoutes/appointment/booking/status/doctorCheckIn")
 );
-app.use("/pharmacycart", verifyToken, require("./MongoRoutes/pharmacy/cart"));
-app.use("/booking", verifyToken, require("./routes/v2/booking"));
-app.use("/blogs", verifyToken, require("./routes/v2/blogs"));
-app.use("/news", verifyToken, require("./routes/v2/news"));
-app.use("/articles", verifyToken, require("./routes/v2/articles"));
-app.use("/podcast", verifyToken, require("./routes/v2/podcast"));
-app.use("/gallery", verifyToken, require("./routes/v2/gallery"));
-app.use("/v2/videos", verifyToken, require("./routes/v2/videos"));
+app.use("/pharmacycart", require("./MongoRoutes/pharmacy/cart"));
+app.use("/booking", require("./routes/v2/booking"));
+app.use("/blogs", require("./routes/v2/blogs"));
+app.use("/news", require("./routes/v2/news"));
+app.use("/articles", require("./routes/v2/articles"));
+app.use("/podcast", require("./routes/v2/podcast"));
+app.use("/gallery", require("./routes/v2/gallery"));
+app.use("/v2/videos", require("./routes/v2/videos"));
 
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
@@ -188,6 +188,6 @@ app.use((error, req, res, next) => {
 });
 
 
-https.createServer(app, credentials).listen(port, () => {
+https.createServer(app).listen(port, () => {
   console.log(`<h1>Express listening on port ${port}</h1>`);
 });
